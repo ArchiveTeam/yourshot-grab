@@ -221,6 +221,11 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
     downloaded[string.gsub(url["url"], "https?://", "http://")] = true
   end
 
+  if status_code == 403 then
+    io.stdout:write("Your IP has gotten temporarily banned, try reducing --concurrency per IP after 10mins...\n")
+    abortgrab = true
+  end
+
   if abortgrab == true then
     io.stdout:write("ABORTING...\n")
     return wget.actions.ABORT
