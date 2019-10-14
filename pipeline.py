@@ -190,8 +190,6 @@ class WgetArgs(object):
             '--warc-header', 'operator: Archive Team',
             '--warc-header', 'yourshot-dld-script-version: ' + VERSION,
             '--warc-header', ItemInterpolation('yourshot-item: %(item_name)s'),
-            '--header', 'Accept-Encoding: gzip',
-            '--compression', 'gzip'
         ]
 
         item_name = item['item_name']
@@ -207,7 +205,7 @@ class WgetArgs(object):
             start, end = item_value.split('-', 1)
             for i in range(int(start), int(end)+1):
                 wget_args.extend(['--warc-header', 'yourshot-photo-id: {}'.format(i)])
-                wget_args.append('https://yourshot.nationalgeographic.com/photos/{}/'.format(s))
+                wget_args.append('https://yourshot.nationalgeographic.com/photos/{}/'.format(i))
         else:
             raise Exception('Unknown item')
 

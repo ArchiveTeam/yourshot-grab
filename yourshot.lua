@@ -1,5 +1,6 @@
 dofile("table_show.lua")
 dofile("urlcode.lua")
+dofile("base64.lua")
 JSON = (loadfile "JSON.lua")()
 
 local item_type = os.getenv('item_type')
@@ -55,7 +56,8 @@ allowed = function(url, parenturl)
     tested[s] = tested[s] + 1
   end
 
-  if string.match(url, "^https?://yourshot%.nationalgeographic%.com/u/[0-9a-zA-Z%-_]+/")
+  if string.match(url, "^https?://yourshot%.nationalgeographic%.com/u/")
+      or string.match(url, "^https?://data%.livefyre%.com/") then
     return true
   end
 
@@ -72,7 +74,9 @@ wget.callbacks.download_child_p = function(urlpos, parent, depth, start_url_pars
   local url = urlpos["url"]["url"]
   local html = urlpos["link_expect_html"]
 
-  if string.match(url, "[<>\\%*%$;%^%[%],%(%){}]") then
+  if string.match(url, "[<>\\%*%$;%^%[%],%(%){}]")
+      or string.match(url, "^https?://yourshot%.nationalgeographic%.com/static/")
+      or string.match(url, "^https?://fonts%.ngeo%.com") then
     return false
   end
 
@@ -141,16 +145,27 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     end
   end
 
-  if allowed(url, nil) and status_code ~= 404 then
+  if allowed(url, nil) and status_code ~= 404
+      and not string.match(url, "^https?://yourshot%.nationalgeographic%.com/u/") then
     html = read_file(file)
     local match
     if string.match(url, "^https?://yourshot%.nationalgeographic%.com/photos/[0-9]+/$") then
       local photo = string.match(url, "/([0-9]+)/$")
+      local photo_base64 = base64enc("PHOTO_" .. photo)
+      local fyre_site_id = string.match(html, "\"siteId\":%s+Number%('([0-9]+)'%)")
       check("https://yourshot.nationalgeographic.com/rpc/photo-read/" .. photo .. "/")
       check("https://yourshot.nationalgeographic.com/rpc/photo-ratings/" .. photo .. "/")
+      check("https://yourshot.nationalgeographic.com/rpc/photo-read-user-data/" .. photo .. "/")
+      check("https://data.livefyre.com/bs3/v3.1/natgeo.fyre.co/" .. fyre_site_id .. "/" .. photo_base64 .. "/init")
+      check("https://data.livefyre.com/bs3/v3.1/natgeo.fyre.co/" .. fyre_site_id .. "/" .. photo_base64 .. "/0.json")
     end
-    for newurl in string.gmatch(string.gsub(html, "&quot;", '"'), '([^"]+)') do
-      checknewurl(newurl)
+    for newurl in string.gmatch(string.gsub(html, "&quot;", '"'), '([^"%s]+)') do
+      if string.match(url, "^https?://data%.livefyre%.com/")
+          and string.match(newurl, "^/natgeo%.fyre%.co/") then
+        check("https://data.livefyre.com/bs3/v3.1" .. newurl)
+      else
+        checknewurl(newurl)
+      end
     end
     for newurl in string.gmatch(string.gsub(html, "&#039;", "'"), "([^']+)") do
       checknewurl(newurl)
@@ -183,9 +198,8 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
   end
   io.stdout:flush()
 
-  local match =  string.match(url["url"], "^https?://yourshot%.nationalgeographic%.com/photos/([0-9]+)/$")
-  if match:
-    ids[match] = true
+  if string.match(url["url"], "^https?://yourshot%.nationalgeographic%.com/photos/([0-9]+)/$") then
+    ids[string.match(url["url"], "/([0-9]+)/$")] = true
   end
 
   if (status_code >= 300 and status_code <= 399) then
