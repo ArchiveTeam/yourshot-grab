@@ -108,6 +108,26 @@ class CheckIP(SimpleTask):
         else:
             self._counter -= 1
 
+class CheckBan(SimpleTask):
+    def __init__(self):
+        SimpleTask.__init__(self, 'CheckBan')
+
+    def process(self, item):
+        msg = None
+        httpclient.AsyncHTTPClient.configure(None, defaults=dict(user_agent=USER_AGENT))
+        http_client = httpclient.HTTPClient()
+        try:
+            response = http_client.fetch("https://yourshot.nationalgeographic.com/static/img/navbar/yourshot-logo.svg") # static asset
+            # response = http_client.fetch("https://yourshot.nationalgeographic.com/api/v3/photos/search/")  # dynamic
+        except httpclient.HTTPError as e:
+            msg = "Failed to get CheckBan URL: " + str(e)
+            item.log_output(msg)
+            item.log_output("Sleeping 60...")
+            time.sleep(60)
+        http_client.close()
+        if msg != None:
+            raise Exception(msg)
+
 
 class PrepareDirectories(SimpleTask):
     def __init__(self, warc_prefix):
@@ -239,6 +259,7 @@ project = Project(
 
 pipeline = Pipeline(
     CheckIP(),
+    CheckBan(),
     GetItemFromTracker('http://%s/%s' % (TRACKER_HOST, TRACKER_ID), downloader,
         VERSION),
     PrepareDirectories(warc_prefix='yourshot'),
