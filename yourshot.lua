@@ -145,7 +145,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     end
   end
 
-  if allowed(url, nil) and status_code ~= 404
+  if allowed(url, nil) and status_code ~= 404 and status_code ~= 403
       and not string.match(url, "^https?://yourshot%.nationalgeographic%.com/u/") then
     html = read_file(file)
     local match
@@ -227,11 +227,11 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
   end
   
   if status_code >= 500
-      or (status_code >= 400 and status_code ~= 403 and status_code ~= 404)
+      or (status_code >= 400 and status_code ~= 404)
       or status_code  == 0 then
     io.stdout:write("Server returned "..http_stat.statcode.." ("..err.."). Sleeping.\n")
     io.stdout:flush()
-    local maxtries = 8
+    local maxtries = 10
     if not allowed(url["url"], nil) then
         maxtries = 2
     end
