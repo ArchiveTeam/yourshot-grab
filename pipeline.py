@@ -64,7 +64,7 @@ if not WGET_LUA:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20191023.01'
+VERSION = '20191023.02'
 USER_AGENT = 'ArchiveTeam'
 TRACKER_ID = 'yourshot'
 TRACKER_HOST = 'tracker.archiveteam.org'
@@ -107,6 +107,26 @@ class CheckIP(SimpleTask):
             self._counter = 10
         else:
             self._counter -= 1
+
+class CheckBan(SimpleTask):
+    def __init__(self):
+        SimpleTask.__init__(self, 'CheckBan')
+
+    def process(self, item):
+        msg = None
+        httpclient.AsyncHTTPClient.configure(None, defaults=dict(user_agent=USER_AGENT))
+        http_client = httpclient.HTTPClient()
+        try:
+            # response = http_client.fetch("https://yourshot.nationalgeographic.com/static/img/navbar/yourshot-logo.svg") # static asset will 403 but not 504
+            response = http_client.fetch("https://yourshot.nationalgeographic.com/api/v3/photos/search/")  # dynamic will 504
+        except httpclient.HTTPError as e:
+            msg = "Failed to get CheckBan URL: " + str(e)
+            item.log_output(msg)
+        http_client.close()
+        if msg != None:
+            item.log_output("Sleeping 15min...")
+            time.sleep(15*60)
+            raise Exception(msg)
 
 
 class PrepareDirectories(SimpleTask):
@@ -239,12 +259,13 @@ project = Project(
 
 pipeline = Pipeline(
     CheckIP(),
+    CheckBan(),
     GetItemFromTracker('http://%s/%s' % (TRACKER_HOST, TRACKER_ID), downloader,
         VERSION),
     PrepareDirectories(warc_prefix='yourshot'),
     WgetDownload(
         WgetArgs(),
-        max_tries=2,
+        max_tries=1,
         accept_on_exit_code=[0, 4, 8],
         env={
             'item_dir': ItemValue('item_dir'),
