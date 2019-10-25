@@ -41,7 +41,13 @@ end
 
 allowed = function(url, parenturl)
   if string.match(url, "'+")
-      or string.match(url, "[<>\\%*%$;%^%[%],%(%){}]") then
+      or string.match(url, "[<>\\%*%$;%^%[%],%(%){}]")
+      or string.match(url, "^https?://m%.yourshot%.nationalgeographic%.com/")
+      or string.match(url, "/images/apple%-touch%-icon[^%.]*%.png$")
+      or string.match(url, "/images/favicon%.ico$")
+      or string.match(url, "/text/xml%+oembed%?url=")
+      or string.match(url, "/application/json%+oembed%?url=")
+      or string.match(url, "^https?://yourshot%.nationalgeographic%.com/photos/[0-9]+$") then
     return false
   end
 
@@ -56,12 +62,17 @@ allowed = function(url, parenturl)
     tested[s] = tested[s] + 1
   end
 
-  if string.match(url, "^https?://yourshot%.nationalgeographic%.com/u/")
-      or string.match(url, "^https?://data%.livefyre%.com/") then
+  if string.match(url, "^https?://data%.livefyre%.com/") then
     return true
   end
 
   for s in string.gmatch(url, "([0-9]+)") do
+    if ids[s] then
+      return true
+    end
+  end
+
+  for s in string.gmatch(url, "([a-zA-Z0-9_%-]+)") do
     if ids[s] then
       return true
     end
@@ -145,7 +156,7 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
     end
   end
 
-  if allowed(url, nil) and status_code ~= 404
+  if allowed(url, nil) and status_code ~= 404 and status_code ~= 403
       and not string.match(url, "^https?://yourshot%.nationalgeographic%.com/u/") then
     html = read_file(file)
     local match
@@ -159,12 +170,32 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
       check("https://data.livefyre.com/bs3/v3.1/natgeo.fyre.co/" .. fyre_site_id .. "/" .. photo_base64 .. "/init")
       check("https://data.livefyre.com/bs3/v3.1/natgeo.fyre.co/" .. fyre_site_id .. "/" .. photo_base64 .. "/0.json")
     end
-    for newurl in string.gmatch(string.gsub(html, "&quot;", '"'), '([^"%s]+)') do
+    local image_size = 0
+    local image_largest = ""
+    local image_largest_id = ""
+    for newurl in string.gmatch(string.gsub(html, "&quot;", '"'), '([^"]+)') do
       if string.match(url, "^https?://data%.livefyre%.com/")
           and string.match(newurl, "^/natgeo%.fyre%.co/") then
         check("https://data.livefyre.com/bs3/v3.1" .. newurl)
+      elseif string.match(newurl, "/ [0-9]+w$") then
+        local size = tonumber(string.match(newurl, "([0-9]+)w$"))
+        local newurl_stripped = string.match(newurl, "^([^%s]+)")
+        local newurl_id = string.match(newurl_stripped, "([a-zA-Z0-9_%-]+)/$")
+        if size == 1024 then
+          ids[newurl_id] = true
+          checknewurl(newurl_stripped)
+        end
+        if size > image_size then
+          image_size = size
+          image_largest = newurl_stripped
+          image_largest_id = newurl_id
+        end
       else
         checknewurl(newurl)
+      end
+      if image_largest ~= "" then
+        ids[image_largest_id] = true
+        checknewurl(image_largest)
       end
     end
     for newurl in string.gmatch(string.gsub(html, "&#039;", "'"), "([^']+)") do
@@ -232,11 +263,11 @@ wget.callbacks.httploop_result = function(url, err, http_stat)
   end
   
   if status_code >= 500
-      or (status_code >= 400 and status_code ~= 403 and status_code ~= 404)
+      or (status_code >= 400 and status_code ~= 404)
       or status_code  == 0 then
     io.stdout:write("Server returned "..http_stat.statcode.." ("..err.."). Sleeping.\n")
     io.stdout:flush()
-    local maxtries = 8
+    local maxtries = 10
     if not allowed(url["url"], nil) then
         maxtries = 2
     end

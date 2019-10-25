@@ -64,7 +64,7 @@ if not WGET_LUA:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20191014.03'
+VERSION = '20191023.02'
 USER_AGENT = 'ArchiveTeam'
 TRACKER_ID = 'yourshot'
 TRACKER_HOST = 'tracker.archiveteam.org'
@@ -117,15 +117,15 @@ class CheckBan(SimpleTask):
         httpclient.AsyncHTTPClient.configure(None, defaults=dict(user_agent=USER_AGENT))
         http_client = httpclient.HTTPClient()
         try:
-            response = http_client.fetch("https://yourshot.nationalgeographic.com/static/img/navbar/yourshot-logo.svg") # static asset
-            # response = http_client.fetch("https://yourshot.nationalgeographic.com/api/v3/photos/search/")  # dynamic
+            # response = http_client.fetch("https://yourshot.nationalgeographic.com/static/img/navbar/yourshot-logo.svg") # static asset will 403 but not 504
+            response = http_client.fetch("https://yourshot.nationalgeographic.com/api/v3/photos/search/")  # dynamic will 504
         except httpclient.HTTPError as e:
             msg = "Failed to get CheckBan URL: " + str(e)
             item.log_output(msg)
-            item.log_output("Sleeping 60...")
-            time.sleep(60)
         http_client.close()
         if msg != None:
+            item.log_output("Sleeping 15min...")
+            time.sleep(15*60)
             raise Exception(msg)
 
 
