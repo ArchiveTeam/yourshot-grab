@@ -64,7 +64,7 @@ if not WGET_LUA:
 #
 # Update this each time you make a non-cosmetic change.
 # It will be added to the WARC files and reported to the tracker.
-VERSION = '20191030.01'
+VERSION = '20191030.02'
 USER_AGENT = 'ArchiveTeam'
 TRACKER_ID = 'yourshot'
 TRACKER_HOST = 'tracker.archiveteam.org'
