@@ -181,10 +181,6 @@ wget.callbacks.get_urls = function(file, url, is_css, iri)
         local size = tonumber(string.match(newurl, "([0-9]+)w$"))
         local newurl_stripped = string.match(newurl, "^([^%s]+)")
         local newurl_id = string.match(newurl_stripped, "([a-zA-Z0-9_%-]+)/$")
-        if size == 1024 then
-          ids[newurl_id] = true
-          checknewurl(newurl_stripped)
-        end
         if size > image_size then
           image_size = size
           image_largest = newurl_stripped
