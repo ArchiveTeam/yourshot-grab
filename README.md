@@ -1,7 +1,7 @@
 yourshot-grab
 =============
 
-More information about the archiving project can be found on the ArchiveTeam wiki: [Your Shot](http://archiveteam.org/index.php?title=Your Shot)
+More information about the archiving project can be found on the ArchiveTeam wiki: [Your Shot](http://archiveteam.org/index.php?title=Your%20Shot)
 
 Setup instructions
 =========================
